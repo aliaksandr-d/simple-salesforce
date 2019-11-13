@@ -183,6 +183,8 @@ class SFBulkType(object):
                                                session=self.session,
                                                headers=self.headers)
                 full_batch.extend(query_result.json())
+            if full_batch and 'Id' in full_batch[0]:
+                full_batch.sort(key=lambda x: x.get('Id'))
             return full_batch
 
         return result.json()
