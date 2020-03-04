@@ -103,3 +103,16 @@ class SalesforceGeneralError(SalesforceError):
 
     def __str__(self):
         return self.message.format(status=self.status, content=self.content)
+
+
+class SalesforceBulkApiProcessingError(SalesforceError):
+    """
+    Thrown to indicate that bulk operation failed or not processed
+    """
+    message = u'Bulk operation is stopped. Reason: operation is {status}'
+
+    def __init__(self, status):
+        self.status = status
+
+    def __str__(self):
+        return self.message.format(status=self.status)

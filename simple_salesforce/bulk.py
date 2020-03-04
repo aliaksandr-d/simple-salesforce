@@ -10,6 +10,7 @@ import json
 import requests
 from time import sleep
 from simple_salesforce.util import call_salesforce
+from simple_salesforce.exceptions import SalesforceBulkApiProcessingError
 
 
 class SFBulkHandler(object):
@@ -193,7 +194,7 @@ class SFBulkType(object):
         """ monitor a job's batches
         """
         complete_states = {'Completed', 'Failed', 'NotProcessed'}
-
+        failed_states = {'Failed', 'NotProcessed'}
 
         batches = self._get_batches(job_id=job_id, batch_id=batch_id)
 
@@ -204,7 +205,13 @@ class SFBulkType(object):
             batches = self._get_batches(job_id=job_id, batch_id=batch_id)
             batch_states = set([batch['state'] for batch in batches])
 
-        return True
+        try:
+            if 'Completed' not in batch_states:
+                raise SalesforceBulkApiProcessingError(batch_states)
+        except SalesforceBulkApiProcessingError as e:
+            raise e
+        finally:
+            self._close_job(job_id=job_id)
 
     #pylint: disable=R0913
     def _bulk_operation(self, object_name, operation, data,
@@ -226,18 +233,11 @@ class SFBulkType(object):
             external_id_field=external_id_field,
             chunk_size=chunk_size
         )
-        print("create job")
         init_batch = self._add_batch(job_id=job['id'], data=data,
                                      operation=operation)
-        print("init batch")
+
         self._monitor_batches(job_id=job['id'])
-        print("monitored")
-        self._close_job(job_id=job['id'])
-        print("close")
-        self._monitor_batches(job_id=job['id'])
-        print("monitore")
         batches = self._get_batches(job['id'])
-        print("get batches")
 
         for batch in batches:
             batch_result = self._get_batch_results(job_id=init_batch['jobId'],
